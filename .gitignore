@@ -1,0 +1,8 @@
+# Python virtual environment
+venv/
+
+# IDE crap
+.idea/
+
+# Data files
+*.dat
