@@ -13,17 +13,17 @@ print("\nOpened a LabJack with Device type: %i, Connection type: %i,\n"
       (info[0], info[1], info[2], ljm.numberToIP(info[3]), info[4], info[5]))
 
 # ========== User config starts here ==========
-# Positive has to be even, and negative has to be one higher
+# Positive channel has to be even, and the negative channel has to be one higher
 positive_channel = 0  # AIN0
 negative_channel = positive_channel + 1  # AIN1
 excitation_channel = 2  # AIN2
 sample_rate = 1000
-excitation_voltage = 10.0
+excitation_voltage = 9.15
 
 signal_level = 0.1  # Set to 0.01 for force less then 1/3 max capacity
 
-calibration_factor = 1
-calibration_offset = 0
+calibration_factor = 20000/(0.003*9.15)
+calibration_offset = -90
 
 do_hardware_config = False  # This is experimental, and could brick something
 # ========== User config ends here ==========
