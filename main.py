@@ -7,12 +7,13 @@ import pandas as pd
 # Read data from file
 all_data = pd.read_csv('SS235_5.dat', sep='\t', header=6)
 data_low = 0
-data_high = 4500
-# data_high = -1
+# data_high = 4500
+data_high = -1
 # data_low = 5000
 # data_high = 6000
 data = all_data.values[data_low:data_high, 1]
-data = data * (20000 / (0.003 * 9.15)) - 90  # Scale data to pounds
+# data = data * (20000 / (0.003 * 9.15)) - 90  # Scale data to pounds
+data = (data * (20000 / (0.003 * 9.15)) - 90) * 0.00444822  # Scale data to kilonewtons
 samplerate = 1000.0
 
 # Number of samplepoints

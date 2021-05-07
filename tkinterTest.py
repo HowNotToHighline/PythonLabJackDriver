@@ -4,7 +4,7 @@ root = tk.Tk()
 root.title("Jetse is awesome!")
 root.geometry("1200x250")
 
-status = tk.Label(root, text="Working", font=("Arial", 200), bg='blue')
+status = tk.Label(root, text="Working", font=("Arial", 200))
 status.pack(fill=tk.BOTH)
 # status.grid()
 
@@ -21,7 +21,7 @@ def update_status():
     else:
         counter += 1.13
 
-    update_peak_force(counter)
+    update_peak_force(150.29)
 
     root.after(int(1.0), update_status)
 
