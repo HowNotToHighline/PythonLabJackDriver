@@ -5,7 +5,6 @@ import os
 
 # Open first found LabJack
 handle = ljm.openS("T7", "ETHERNET", "10.0.5.69")  # T7 device, Any connection, Any identifier
-# handle = ljm.openS("ANY", "ANY", "ANY")  # Any device, Any connection, Any identifier
 
 info = ljm.getHandleInfo(handle)
 print("\nOpened a LabJack with Device type: %i, Connection type: %i,\n"
@@ -22,7 +21,7 @@ excitation_voltage = 9.15
 
 signal_level = 0.1  # Set to 0.01 for force less then 1/3 max capacity
 
-calibration_factor = 20000/(0.003*9.15)
+calibration_factor = 20000 / (0.003 * 9.15)
 calibration_offset = -90
 
 do_hardware_config = False  # This is experimental, and could brick something
@@ -33,7 +32,7 @@ negative_channel_name = "AIN%i" % negative_channel
 excitation_channel_name = "AIN%i" % excitation_channel
 
 name = "labjackVisual"
-rate_ms = 1000 / sample_rate
+rate_ms = int(1000 / sample_rate)
 rate_us = int(1000000 / sample_rate)
 
 if do_hardware_config:
@@ -54,7 +53,7 @@ file_path = os.path.join(cwd, file_name)
 
 # Open the file & write a header-line
 f = open(file_path, 'w')
-f.write("Iteration, Current tick (us), Number of skipped intervals, Raw measurement, Force")
+f.write("Iteration, Current tick (us), Number of skipped intervals, Raw measurement, Force\r\n")
 
 # Print some program-initialization information
 print("Reading %i times per second and saving data to the file:\n - %s\n" % (sample_rate, file_path))
@@ -63,40 +62,44 @@ print("Reading %i times per second and saving data to the file:\n - %s\n" % (sam
 interval_handle = 0
 ljm.startInterval(interval_handle, rate_us)
 cur_iteration = 0
-peak_force = 0
+peak_force = None
 
 root = tk.Tk()
 root.title("Jetse is awesome!")
-root.geometry("1200x250")
+root.geometry("1000x250")
 
 status = tk.Label(root, text="Loading", font=("Arial", 200))
 status.grid()
 
 
 def update_peak_force(kilo_newtons):
-    status["text"] = "{0:.2f}".format(kilo_newtons) + 'kN'
+    status["text"] = "{0:.0f}".format(kilo_newtons) + 'lb'
 
 
 def update_status():
+    print("update_status")
     global peak_force
     global cur_iteration
 
     num_skipped_intervals = ljm.waitForNextInterval(interval_handle)
+    print("After next interval")
     cur_tick = ljm.getHostTick()
 
     raw_measurement = ljm.eReadName(handle, positive_channel_name)
 
     force = (raw_measurement * calibration_factor) + calibration_offset
-    if force > peak_force:
+    if peak_force is None or force > peak_force:
+        print("Updating peak force")
         peak_force = force
         update_peak_force(peak_force)
 
-    # f.write("%i, %i, %i, %i, %0.3f\r\n" % (curIteration, cur_tick, num_skipped_intervals, raw_measurement, force))
-    f.write("{0:d}, {1:d}, {2:d}, {3:f}, {4:.3f}\r\n".format(cur_iteration, cur_tick, num_skipped_intervals,
-                                                             raw_measurement, force))
+    data_string = "{0:d}, {1:d}, {2:d}, {3:f}, {4:.3f}".format(cur_iteration, cur_tick, num_skipped_intervals,
+                                                               raw_measurement, force)
+    print(data_string)
+    f.write(data_string + "\r\n")
     cur_iteration += 1
 
-    root.after(int(rate_ms), update_status)
+    root.after(rate_ms, update_status)
 
 
 # Launch the status message after 1 millisecond (when the window is loaded)
