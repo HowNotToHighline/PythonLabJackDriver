@@ -4,7 +4,7 @@ import datetime
 import os
 
 # Open first found LabJack
-handle = ljm.openS("T7", "ANY", "ANY")  # T7 device, Any connection, Any identifier
+handle = ljm.openS("T7", "ETHERNET", "10.0.5.69")  # T7 device, Any connection, Any identifier
 # handle = ljm.openS("ANY", "ANY", "ANY")  # Any device, Any connection, Any identifier
 
 info = ljm.getHandleInfo(handle)
@@ -34,7 +34,7 @@ excitation_channel_name = "AIN%i" % excitation_channel
 
 name = "labjackVisual"
 rate_ms = 1000 / sample_rate
-rate_us = 1000000 / sample_rate
+rate_us = int(1000000 / sample_rate)
 
 if do_hardware_config:
     # Setup differential mode https://labjack.com/support/datasheets/t-series/ain#differential
@@ -92,7 +92,7 @@ def update_status():
         update_peak_force(peak_force)
 
     # f.write("%i, %i, %i, %i, %0.3f\r\n" % (curIteration, cur_tick, num_skipped_intervals, raw_measurement, force))
-    f.write("{0:d}, {1:d}, {2:d}, {3:d}, {4:.3f}\r\n".format(cur_iteration, cur_tick, num_skipped_intervals,
+    f.write("{0:d}, {1:d}, {2:d}, {3:f}, {4:.3f}\r\n".format(cur_iteration, cur_tick, num_skipped_intervals,
                                                              raw_measurement, force))
     cur_iteration += 1
 
