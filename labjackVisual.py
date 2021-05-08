@@ -53,7 +53,7 @@ file_path = os.path.join(cwd, file_name)
 
 # Open the file & write a header-line
 f = open(file_path, 'w')
-f.write("Iteration, Current tick (us), Number of skipped intervals, Raw measurement, Force\r\n")
+f.write("Iteration, Current tick (us), Number of skipped intervals, Raw measurement, Force\n")
 
 # Print some program-initialization information
 print("Reading %i times per second and saving data to the file:\n - %s\n" % (sample_rate, file_path))
@@ -96,7 +96,7 @@ def update_status():
     data_string = "{0:d}, {1:d}, {2:d}, {3:f}, {4:.3f}".format(cur_iteration, cur_tick, num_skipped_intervals,
                                                                raw_measurement, force)
     print(data_string)
-    f.write(data_string + "\r\n")
+    f.write(data_string + "\n")
     cur_iteration += 1
 
     root.after(rate_ms, update_status)
