@@ -3,8 +3,8 @@ import tkinter as tk
 import datetime
 import os
 
-# Open first found LabJack
-handle = ljm.openS("T7", "ETHERNET", "10.0.5.69")  # T7 device, Any connection, Any identifier
+# Open LabJack
+handle = ljm.openS("T7", "ETHERNET", "10.0.5.69")
 
 info = ljm.getHandleInfo(handle)
 print("\nOpened a LabJack with Device type: %i, Connection type: %i,\n"
