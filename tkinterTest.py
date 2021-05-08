@@ -1,17 +1,44 @@
 import tkinter as tk
+import threading
+
+
+class App(threading.Thread):
+
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.peak_force = None
+        self._stop = threading.Event()
+
+    def stop(self):
+        self._stop.set()
+
+    def stopped(self):
+        return self._stop.isSet()
+
+    def run(self):
+        while not self.stopped():
+            pass
+        print("Quit tkinter")
+
+    def get_peak_force(self):
+        if self.peak_force is None:
+            return 0
+        return self.peak_force
+
 
 root = tk.Tk()
 root.title("Jetse is awesome!")
 root.geometry("1200x250")
 
-status = tk.Label(root, text="Working", font=("Arial", 200))
-status.pack(fill=tk.BOTH)
-# status.grid()
+status = tk.Label(root, text="Loading", font=("Arial", 200))
+status.grid()
 
 def update_peak_force(kiloNewtons):
     status["text"] = "{0:.2f}".format(kiloNewtons) + 'kN'
 
+
 counter = 100
+
 
 def update_status():
     global counter
