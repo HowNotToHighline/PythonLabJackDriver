@@ -17,12 +17,12 @@ positive_channel = 0  # AIN0
 negative_channel = positive_channel + 1  # AIN1
 excitation_channel = 2  # AIN2
 sample_rate = 1000
-excitation_voltage = 9.15
+excitation_voltage = 9.18
 
 signal_level = 0.1  # Set to 0.01 for force less then 1/3 max capacity
 
-calibration_factor = 20000 / (0.003 * 9.15)
-calibration_offset = -90
+calibration_factor = 20000 / (0.003 * excitation_voltage)
+calibration_offset = -85
 
 do_hardware_config = False  # This is experimental, and could brick something
 # ========== User config ends here ==========
