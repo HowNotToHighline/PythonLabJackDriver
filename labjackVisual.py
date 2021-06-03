@@ -40,6 +40,12 @@ class App(threading.Thread):
             ljm.eWriteName(self.handle, self.positive_channel_name + "_NEGATIVE_CH", self.negative_channel)
             # Set right range
             ljm.eWriteName(self.handle, self.positive_channel_name + "_RANGE", self.signal_level)
+
+            # aNames = ["AIN0_RANGE", "AIN1_RANGE", "STREAM_SETTLING_US",
+            #           "STREAM_RESOLUTION_INDEX"]
+            # aValues = [10.0, 10.0, 0, 0]
+            # ljm.eWriteNames(self.handle, len(aNames), aNames, aValues)
+
             # TODO: Configure LJTick-DAC
             # It seems quite complicated, I don't really feel like implementing it
             # Maybe I'll implement it some day, maybe only in the "proper" versions, maybe we'll remove it all together
@@ -53,49 +59,62 @@ class App(threading.Thread):
 
         # Open the file & write a header-line
         self.f = open(file_path, 'w')
-        self.f.write("Current tick (us), Raw measurement, Force\n")
+        self.f.write("Current tick (us), Raw measurement, Excitation voltage, Force\n")
 
         # Print some program-initialization information
-        print("Reading %i times per second and saving data to the file:\n - %s\n" % (self.sample_rate, file_path))
+        print("Reading {0:.0f} times per second and saving data to the file:\n - {1}\n".format(self.sample_rate, file_path))
 
         # Prepare final variables for program execution
-        self.interval_handle = 0
-        ljm.startInterval(self.interval_handle, rate_us)
-        self.cur_iteration = 0
         self.peak_force = None
 
     def run(self):
+        # Stream example: https://github.com/labjack/labjack-ljm-python/blob/b9ce507e6d1d90cd9b2acf72924b7e531dcfa7dc/Examples/More/Stream/stream_basic_with_stream_out.py
         global stop_threads
-        prev_tick = 0
+
+        stream_handle = 0
+        streamInNames = [self.positive_channel_name, self.excitation_channel_name]
+        aScanList = ljm.namesToAddresses(len(streamInNames), streamInNames)[0]
+        scanRate = self.sample_rate
+        scansPerRead = 100
+        actualScanRate = ljm.eStreamStart(stream_handle, scansPerRead, len(streamInNames), aScanList, scanRate)
+        print("Stream started with a scan rate of {0:.0f}Hz ({0:.2f}Hz to be exact)".format(scanRate, actualScanRate))
+
+        NUM_IN_CHANNELS = len(streamInNames)
+
         while True:
-            num_skipped_intervals = ljm.waitForNextInterval(self.interval_handle)
             cur_tick = ljm.getHostTick()
 
-            raw_measurement = ljm.eReadName(self.handle, self.positive_channel_name)
+            if stop_threads:
+                break
 
-            # Trigger every second if the program is running at the requested speed
-            if self.cur_iteration % self.sample_rate == 0:
-                self.excitation_voltage = ljm.eReadName(self.handle, self.excitation_channel_name)
-                print("{0:.0f}Hz\t{1:0.3f}V excitation".format(1000000 / (cur_tick - prev_tick), self.excitation_voltage))
-                if stop_threads:
-                    break
+            ret = ljm.eStreamRead(stream_handle)
 
-            # force = (raw_measurement * self.calibration_factor) + self.calibration_offset
+            # Note that the Python eStreamData will return a data list of size
+            # scansPerRead*TOTAL_NUM_CHANNELS, but only the first
+            # scansPerRead*NUM_IN_CHANNELS samples in the list are valid. Output
+            # channels are not included in the eStreamRead's returned data.
+            data = ret[0][0:(scansPerRead * NUM_IN_CHANNELS)]
+            if ret[1] > 200 or ret[2] > 200:
+                print("Buffer overrun, deviceScanBacklog: {0:d}\tljmScanBacklog: {1:d}".format(ret[1], ret[2]))
+            scans = len(data) / NUM_IN_CHANNELS
 
-            force = (raw_measurement * (20000 / (0.003 * self.excitation_voltage) / 224.8089)) + self.calibration_offset
-            if self.peak_force is None or force > self.peak_force:
-                self.peak_force = force
+            # Shouldn't this be scans?
+            for i in range(scansPerRead):
+                raw_measurement = data[i * NUM_IN_CHANNELS + 0]
+                excitation_voltage = data[i * NUM_IN_CHANNELS + 1]
 
-            data_string = "{0:d}, {1:f}, {2:.3f}\n".format(cur_tick, raw_measurement, force)
-            prev_tick = cur_tick
-            self.f.write(data_string)
-            self.cur_iteration += 1
+                force = (raw_measurement * (20000 / (0.003 * self.excitation_voltage) / 224.8089)) + self.calibration_offset
+                if self.peak_force is None or force > self.peak_force:
+                    self.peak_force = force
+
+                data_string = "{0:d}, {1:f}, {2:.3f}, {3:.3f}\n".format(cur_tick, raw_measurement, excitation_voltage, force)
+                self.f.write(data_string)
 
         # Close file
         self.f.close()
 
         # Close handles
-        ljm.cleanInterval(self.interval_handle)
+        ljm.eStreamStop(stream_handle)
         ljm.close(self.handle)
 
         print("Quit thread")
@@ -111,7 +130,7 @@ class App(threading.Thread):
 positive_channel = 0  # AIN0
 negative_channel = positive_channel + 1  # AIN1
 excitation_channel = 2  # AIN2
-sample_rate = 1000
+sample_rate = 1000.0
 excitation_voltage = 9.18
 
 signal_level = 0.1  # Set to 0.01 for force less then 1/3 max capacity
@@ -141,8 +160,8 @@ def update_status():
     peak_force = app.get_peak_force()
     if peak_force is not None:
         status["text"] = "{0:.3f}".format(peak_force) + 'kN'
-    # Update UI with about 66Hz
-    root.after(15, update_status)
+    # Update UI with about 10Hz
+    root.after(100, update_status)
 
 
 # Launch the status message after 1 millisecond (when the window is loaded)
