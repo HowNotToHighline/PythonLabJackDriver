@@ -159,7 +159,7 @@ def update_status():
     # Get peak force from thread
     peak_force = app.get_peak_force()
     if peak_force is not None:
-        status["text"] = "{0:.3f}".format(peak_force) + 'kN'
+        status["text"] = "{0:.2f}".format(peak_force) + 'kN'
     # Update UI with about 10Hz
     root.after(100, update_status)
 
