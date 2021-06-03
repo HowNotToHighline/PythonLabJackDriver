@@ -10,7 +10,6 @@ class App(threading.Thread):
     def __init__(self, _positive_channel, _negative_channel, _excitation_channel, _sample_rate, _excitation_voltage,
                  _signal_level, _calibration_factor, _calibration_offset, _do_hardware_config):
         threading.Thread.__init__(self)
-        self._stop = threading.Event()
 
         self.positive_channel = _positive_channel
         self.negative_channel = _negative_channel
@@ -34,7 +33,7 @@ class App(threading.Thread):
         self.excitation_channel_name = "AIN%i" % self.excitation_channel
 
         name = "labjackVisual"
-        self.rate_us = int(1000000 / self.sample_rate)
+        rate_us = int(1000000 / self.sample_rate)
 
         if self.do_hardware_config:
             # Setup differential mode https://labjack.com/support/datasheets/t-series/ain#differential
@@ -54,38 +53,42 @@ class App(threading.Thread):
 
         # Open the file & write a header-line
         self.f = open(file_path, 'w')
-        self.f.write("Iteration, Current tick (us), Number of skipped intervals, Raw measurement, Force\n")
+        self.f.write("Current tick (us), Raw measurement, Force\n")
 
         # Print some program-initialization information
         print("Reading %i times per second and saving data to the file:\n - %s\n" % (self.sample_rate, file_path))
 
         # Prepare final variables for program execution
         self.interval_handle = 0
-        ljm.startInterval(self.interval_handle, self.rate_us)
+        ljm.startInterval(self.interval_handle, rate_us)
         self.cur_iteration = 0
         self.peak_force = None
 
-    def stop(self):
-        self._stop.set()
-
-    def stopped(self):
-        return self._stop.isSet()
-
     def run(self):
-        while not self.stopped():
+        global stop_threads
+        prev_tick = 0
+        while True:
             num_skipped_intervals = ljm.waitForNextInterval(self.interval_handle)
             cur_tick = ljm.getHostTick()
 
             raw_measurement = ljm.eReadName(self.handle, self.positive_channel_name)
 
-            force = (raw_measurement * self.calibration_factor) + self.calibration_offset
+            # Trigger every second if the program is running at the requested speed
+            if self.cur_iteration % self.sample_rate == 0:
+                self.excitation_voltage = ljm.eReadName(self.handle, self.excitation_channel_name)
+                print("{0:.0f}Hz\t{1:0.3f}V excitation".format(1000000 / (cur_tick - prev_tick), self.excitation_voltage))
+                if stop_threads:
+                    break
+
+            # force = (raw_measurement * self.calibration_factor) + self.calibration_offset
+
+            force = (raw_measurement * (20000 / (0.003 * self.excitation_voltage) / 224.8089)) + self.calibration_offset
             if self.peak_force is None or force > self.peak_force:
                 self.peak_force = force
 
-            data_string = "{0:d}, {1:d}, {2:d}, {3:f}, {4:.3f}".format(self.cur_iteration, cur_tick,
-                                                                       num_skipped_intervals, raw_measurement, force)
-            print(data_string)
-            self.f.write(data_string + "\n")
+            data_string = "{0:d}, {1:f}, {2:.3f}\n".format(cur_tick, raw_measurement, force)
+            prev_tick = cur_tick
+            self.f.write(data_string)
             self.cur_iteration += 1
 
         # Close file
@@ -127,6 +130,7 @@ root.geometry("1200x250")
 status = tk.Label(root, text="Loading", font=("Arial", 200))
 status.grid()
 
+stop_threads = False
 app = App(positive_channel, negative_channel, excitation_channel, sample_rate, excitation_voltage, signal_level,
           calibration_factor, calibration_offset, do_hardware_config)
 app.start()
@@ -148,4 +152,4 @@ root.after(1, update_status)
 root.mainloop()
 
 # Stop thread
-app.stop()
+stop_threads = True
