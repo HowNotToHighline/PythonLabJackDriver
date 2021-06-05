@@ -72,7 +72,7 @@ class App(threading.Thread):
         global stop_threads
 
         stream_handle = 0
-        streamInNames = [self.positive_channel_name, self.excitation_channel_name]
+        streamInNames = [self.positive_channel_name]
         aScanList = ljm.namesToAddresses(len(streamInNames), streamInNames)[0]
         scanRate = self.sample_rate
         scansPerRead = 100
@@ -81,6 +81,7 @@ class App(threading.Thread):
 
         NUM_IN_CHANNELS = len(streamInNames)
 
+        excitation_voltage = ljm.eReadName(self.handle, self.excitation_channel_name)
         while True:
             cur_tick = ljm.getHostTick()
 
@@ -101,7 +102,6 @@ class App(threading.Thread):
             # Shouldn't this be scans?
             for i in range(scansPerRead):
                 raw_measurement = data[i * NUM_IN_CHANNELS + 0]
-                excitation_voltage = data[i * NUM_IN_CHANNELS + 1]
 
                 force = (raw_measurement * (20000 / (0.003 * self.excitation_voltage) / 224.8089)) + self.calibration_offset
                 if self.peak_force is None or force > self.peak_force:
